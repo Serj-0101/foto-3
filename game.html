@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Лопай шарики!</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #0a0e1a;
+    --bg-mid: #111832;
+    --accent: #ffcc33;
+    --card: rgba(255,255,255,0.06);
+    --card-border: rgba(255,255,255,0.1);
+    --text: #eef0f6;
+    --muted: rgba(255,255,255,0.45);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text);
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    cursor: crosshair;
+    user-select: none;
+  }
+
+  canvas#gameCanvas {
+    display: block;
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+
+  /* --- HUD сверху --- */
+  .hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 28px;
+    z-index: 10;
+    pointer-events: none;
+    background: linear-gradient(to bottom, rgba(10,14,26,0.85) 0%, transparent 100%);
+  }
+  .hud-block {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .hud-label {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+  }
+  .hud-value {
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--accent);
+    text-shadow: 0 0 18px rgba(255,204,51,0.4);
+    min-width: 60px;
+    text-align: center;
+  }
+  .hearts {
+    display: flex;
+    gap: 6px;
+  }
+  .heart {
+    width: 28px; height: 28px;
+    transition: transform 0.3s, opacity 0.3s;
+  }
+  .heart.lost {
+    opacity: 0.15;
+    transform: scale(0.7);
+  }
+  .combo-badge {
+    background: linear-gradient(135deg, #ff6644, #ff3366);
+    color: #fff;
+    font-weight: 900;
+    font-size: 16px;
+    padding: 4px 14px;
+    border-radius: 20px;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.3s cubic-bezier(.34,1.56,.64,1);
+  }
+  .combo-badge.show {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  /* --- Панель задания --- */
+  .task-panel {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 10;
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+    padding-bottom: 28px;
+    background: linear-gradient(to top, rgba(10,14,26,0.9) 0%, transparent 100%);
+  }
+  .task-card {
+    background: var(--card);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 16px 40px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+    transition: border-color 0.4s;
+  }
+  .task-icon {
+    width: 38px; height: 46px;
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    flex-shrink: 0;
+    transition: background 0.4s, box-shadow 0.4s;
+    box-shadow: inset -6px -8px 14px rgba(0,0,0,0.25), inset 4px 4px 10px rgba(255,255,255,0.25);
+  }
+  .task-text {
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    transition: color 0.4s;
+  }
+  .task-timer-bar {
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 3px;
+    border-radius: 0 0 20px 20px;
+    transition: width 0.1s linear, background 0.4s;
+  }
+
+  /* --- Экраны --- */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10,14,26,0.92);
+    backdrop-filter: blur(20px);
+    transition: opacity 0.5s;
+  }
+  .overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .overlay-title {
+    font-size: clamp(40px, 8vw, 72px);
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--accent), #ff6644, #ff3366);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+    text-align: center;
+    line-height: 1.1;
+  }
+  .overlay-sub {
+    font-size: 18px;
+    color: var(--muted);
+    margin-bottom: 36px;
+    text-align: center;
+    max-width: 400px;
+    line-height: 1.6;
+  }
+  .overlay-score {
+    font-size: 56px;
+    font-weight: 900;
+    color: var(--accent);
+    margin-bottom: 6px;
+    text-shadow: 0 0 30px rgba(255,204,51,0.5);
+  }
+  .overlay-score-label {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 36px;
+  }
+  .btn-play {
+    background: linear-gradient(135deg, #ff6644, #ff3366);
+    color: #fff;
+    border: none;
+    padding: 16px 56px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 20px;
+    font-weight: 900;
+    border-radius: 60px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 6px 30px rgba(255,51,102,0.4);
+    pointer-events: all;
+  }
+  .btn-play:hover {
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: 0 10px 40px rgba(255,51,102,0.55);
+  }
+  .btn-play:active {
+    transform: scale(0.97);
+  }
+
+  /* --- Попап очков --- */
+  .score-popup {
+    position: fixed;
+    z-index: 50;
+    font-weight: 900;
+    font-size: 26px;
+    pointer-events: none;
+    animation: popUp 0.8s ease-out forwards;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+  }
+  @keyframes popUp {
+    0% { opacity: 1; transform: translateY(0) scale(0.6); }
+    30% { transform: translateY(-20px) scale(1.2); }
+    100% { opacity: 0; transform: translateY(-70px) scale(0.8); }
+  }
+
+  /* --- Тряска экрана --- */
+  .shake {
+    animation: shakeAnim 0.35s ease-out;
+  }
+  @keyframes shakeAnim {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-5px); }
+    80% { transform: translateX(5px); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .score-popup, .shake, .combo-badge, .heart { animation: none !important; transition: none !important; }
+  }
+
+  @media (max-width: 600px) {
+    .hud { padding: 10px 14px; }
+    .hud-value { font-size: 24px; }
+    .task-card { padding: 12px 20px; }
+    .task-text { font-size: 17px; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<!-- HUD -->
+<div class="hud" id="hud" style="display:none;">
+  <div class="hud-block">
+    <div>
+      <div class="hud-label">Счёт</div>
+      <div class="hud-value" id="scoreVal">0</div>
+    </div>
+  </div>
+  <div class="hud-block">
+    <div class="combo-badge" id="comboBadge">x2</div>
+  </div>
+  <div class="hud-block">
+    <div class="hud-label">Жизни</div>
+    <div class="hearts" id="heartsContainer"></div>
+  </div>
+</div>
+
+<!-- Панель задания -->
+<div class="task-panel" id="taskPanel" style="display:none;">
+  <div class="task-card" id="taskCard">
+    <div class="task-icon" id="taskIcon"></div>
+    <div class="task-text" id="taskText">Лопай красные шарики</div>
+    <div class="task-timer-bar" id="taskTimerBar"></div>
+  </div>
+</div>
+
+<!-- Стартовый экран -->
+<div class="overlay" id="startScreen">
+  <div class="overlay-title">Лопай шарики</div>
+  <div class="overlay-sub">По экрану поднимаются разноцветные шарики. Лопай только те, цвет которых указан внизу экрана. Осторожно — за ошибку теряешь жизнь!</div>
+  <button class="btn-play" id="btnStart">Начать игру</button>
+</div>
+
+<!-- Экран конца -->
+<div class="overlay hidden" id="endScreen">
+  <div class="overlay-title">Игра окончена</div>
+  <div class="overlay-score" id="finalScore">0</div>
+  <div class="overlay-score-label">Очков набрано</div>
+  <button class="btn-play" id="btnRestart">Играть снова</button>
+</div>
+
+<script>
+// ===== Данные цветов шариков =====
+const BALLOON_COLORS = [
+  { name: 'красные',    hex: '#FF4455', light: '#FF8899', dark: '#CC2233' },
+  { name: 'синие',      hex: '#4499FF', light: '#88BBFF', dark: '#2266CC' },
+  { name: 'зелёные',    hex: '#44DD66', light: '#88EE99', dark: '#22AA44' },
+  { name: 'жёлтые',     hex: '#FFD644', light: '#FFEE88', dark: '#CCAA22' },
+  { name: 'оранжевые',  hex: '#FF8844', light: '#FFBB88', dark: '#CC5522' },
+  { name: 'фиолетовые', hex: '#BB55FF', light: '#DD99FF', dark: '#8833CC' },
+  { name: 'розовые',    hex: '#FF66AA', light: '#FF99CC', dark: '#CC3377' },
+];
+
+// ===== Аудио через Web Audio API =====
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+}
+function playPop(pitch) {
+  ensureAudio();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(600 + pitch * 200, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.15);
+  gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+}
+function playBad() {
+  ensureAudio();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+  osc.frequency.linearRampToValueAtTime(80, audioCtx.currentTime + 0.25);
+  gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime + 0.25);
+}
+
+// ===== Canvas =====
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let W, H, dpr;
+
+function resize() {
+  dpr = window.devicePixelRatio || 1;
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ===== Звёзды фона =====
+const stars = [];
+for (let i = 0; i < 120; i++) {
+  stars.push({
+    x: Math.random() * 2000,
+    y: Math.random() * 2000,
+    r: Math.random() * 1.5 + 0.3,
+    twinkleSpeed: Math.random() * 0.02 + 0.005,
+    twinkleOffset: Math.random() * Math.PI * 2,
+  });
+}
+
+function drawBackground(time) {
+  // Градиент фона
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#060a14');
+  grad.addColorStop(0.5, '#0d1528');
+  grad.addColorStop(1, '#141e3a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Мягкие цветные пятна
+  ctx.globalAlpha = 0.04;
+  const blobX = W * 0.3 + Math.sin(time * 0.0003) * 100;
+  const blobY = H * 0.25 + Math.cos(time * 0.0004) * 60;
+  const rg = ctx.createRadialGradient(blobX, blobY, 0, blobX, blobY, 350);
+  rg.addColorStop(0, '#ff4466');
+  rg.addColorStop(1, 'transparent');
+  ctx.fillStyle = rg;
+  ctx.fillRect(0, 0, W, H);
+
+  const blob2X = W * 0.75 + Math.cos(time * 0.00025) * 80;
+  const blob2Y = H * 0.6 + Math.sin(time * 0.00035) * 70;
+  const rg2 = ctx.createRadialGradient(blob2X, blob2Y, 0, blob2X, blob2Y, 300);
+  rg2.addColorStop(0, '#4488ff');
+  rg2.addColorStop(1, 'transparent');
+  ctx.fillStyle = rg2;
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = 1;
+
+  // Звёзды
+  for (const s of stars) {
+    const alpha = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(time * s.twinkleSpeed + s.twinkleOffset));
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#eef4ff';
+    ctx.beginPath();
+    ctx.arc(s.x % W, s.y % H, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ===== Шарики =====
+let balloons = [];
+let particles = [];
+let scorePopups = [];
+
+class Balloon {
+  constructor() {
+    this.colorData = BALLOON_COLORS[Math.floor(Math.random() * BALLOON_COLORS.length)];
+    this.radius = 28 + Math.random() * 18;
+    this.x = this.radius + Math.random() * (W - this.radius * 2);
+    this.y = H + this.radius + Math.random() * 100;
+    this.speedY = 0.6 + Math.random() * 1.2;
+    this.wobbleAmp = 15 + Math.random() * 25;
+    this.wobbleFreq = 0.008 + Math.random() * 0.012;
+    this.wobbleOffset = Math.random() * Math.PI * 2;
+    this.baseX = this.x;
+    this.alive = true;
+    this.scale = 0.3;
+    this.targetScale = 1;
+    this.time = 0;
+  }
+
+  update(dt) {
+    this.time += dt;
+    this.y -= this.speedY * dt * 0.06;
+    this.x = this.baseX + Math.sin(this.time * this.wobbleFreq + this.wobbleOffset) * this.wobbleAmp;
+    this.scale += (this.targetScale - this.scale) * 0.08;
+    if (this.y < -this.radius * 2) this.alive = false;
+  }
+
+  draw(ctx) {
+    const r = this.radius * this.scale;
+    if (r < 1) return;
+    const c = this.colorData;
+
+    // Ниточка
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    const stringLen = r * 1.6;
+    ctx.moveTo(this.x, this.y + r);
+    ctx.quadraticCurveTo(
+      this.x + Math.sin(this.time * 0.005) * 8,
+      this.y + r + stringLen * 0.5,
+      this.x + Math.sin(this.time * 0.003) * 5,
+      this.y + r + stringLen
+    );
+    ctx.stroke();
+
+    // Тело шарика — эллипс
+    ctx.beginPath();
+    ctx.ellipse(this.x, this.y, r * 0.88, r, 0, 0, Math.PI * 2);
+
+    // Градиент
+    const grad = ctx.createRadialGradient(
+      this.x - r * 0.3, this.y - r * 0.35, r * 0.1,
+      this.x, this.y, r
+    );
+    grad.addColorStop(0, c.light);
+    grad.addColorStop(0.6, c.hex);
+    grad.addColorStop(1, c.dark);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Блик
+    ctx.beginPath();
+    ctx.ellipse(this.x - r * 0.25, this.y - r * 0.3, r * 0.22, r * 0.32, -0.4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.fill();
+
+    // Маленький блик
+    ctx.beginPath();
+    ctx.arc(this.x - r * 0.1, this.y - r * 0.55, r * 0.08, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fill();
+
+    // Узелок
+    ctx.beginPath();
+    ctx.moveTo(this.x - 4 * this.scale, this.y + r);
+    ctx.lineTo(this.x, this.y + r + 7 * this.scale);
+    ctx.lineTo(this.x + 4 * this.scale, this.y + r);
+    ctx.fillStyle = c.dark;
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  hitTest(mx, my) {
+    const dx = mx - this.x;
+    const dy = my - this.y;
+    const r = this.radius * this.scale;
+    return (dx * dx / (r * 0.88 * r * 0.88) + dy * dy / (r * r)) <= 1;
+  }
+}
+
+// ===== Частицы лопания =====
+class Particle {
+  constructor(x, y, color) {
+    this.x = x;
+    this.y = y;
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2 + Math.random() * 6;
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed - 2;
+    this.radius = 2 + Math.random() * 5;
+    this.color = color;
+    this.life = 1;
+    this.decay = 0.015 + Math.random() * 0.02;
+    this.gravity = 0.12;
+  }
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy += this.gravity;
+    this.vx *= 0.98;
+    this.life -= this.decay;
+  }
+  draw(ctx) {
+    if (this.life <= 0) return;
+    ctx.globalAlpha = this.life;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, Math.max(0.5, this.radius * this.life), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ===== Игровое состояние =====
+let gameState = 'start'; // start, playing, ended
+let score = 0;
+let lives = 5;
+let maxLives = 5;
+let combo = 0;
+let comboTimer = 0;
+let currentTargetColor = null;
+let taskTimeLeft = 0;
+let taskDuration = 8000; // мс на одно задание
+let spawnTimer = 0;
+let spawnInterval = 700; // мс между спавном
+let lastTime = 0;
+let difficultyTimer = 0;
+
+// ===== DOM-элементы =====
+const hud = document.getElementById('hud');
+const taskPanel = document.getElementById('taskPanel');
+const taskCard = document.getElementById('taskCard');
+const taskIcon = document.getElementById('taskIcon');
+const taskText = document.getElementById('taskText');
+const taskTimerBar = document.getElementById('taskTimerBar');
+const scoreVal = document.getElementById('scoreVal');
+const heartsContainer = document.getElementById('heartsContainer');
+const comboBadge = document.getElementById('comboBadge');
+const startScreen = document.getElementById('startScreen');
+const endScreen = document.getElementById('endScreen');
+const finalScore = document.getElementById('finalScore');
+const btnStart = document.getElementById('btnStart');
+const btnRestart = document.getElementById('btnRestart');
+
+// ===== Сердечки =====
+function renderHearts() {
+  heartsContainer.innerHTML = '';
+  for (let i = 0; i < maxLives; i++) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.classList.add('heart');
+    if (i >= lives) svg.classList.add('lost');
+    svg.innerHTML = `<path fill="${i < lives ? '#ff4466' : '#333'}" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>`;
+    heartsContainer.appendChild(svg);
+  }
+}
+
+// ===== Задание =====
+function pickNewTask() {
+  let newColor;
+  do {
+    newColor = BALLOON_COLORS[Math.floor(Math.random() * BALLOON_COLORS.length)];
+  } while (newColor === currentTargetColor && BALLOON_COLORS.length > 1);
+  currentTargetColor = newColor;
+  taskTimeLeft = taskDuration;
+
+  // Обновляем UI
+  taskIcon.style.background = `radial-gradient(circle at 35% 35%, ${currentTargetColor.light}, ${currentTargetColor.hex}, ${currentTargetColor.dark})`;
+  taskText.textContent = `Лопай ${currentTargetColor.name} шарики`;
+  taskText.style.color = currentTargetColor.hex;
+  taskCard.style.borderColor = currentTargetColor.hex + '44';
+  taskTimerBar.style.background = currentTargetColor.hex;
+}
+
+// ===== Попап очков =====
+function showScorePopup(x, y, text, color) {
+  const el = document.createElement('div');
+  el.className = 'score-popup';
+  el.textContent = text;
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.style.color = color;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 800);
+}
+
+// ===== Тряска =====
+function shakeScreen() {
+  document.body.classList.remove('shake');
+  void document.body.offsetWidth;
+  document.body.classList.add('shake');
+}
+
+// ===== Комбо =====
+function updateCombo() {
+  if (combo >= 2) {
+    comboBadge.textContent = `x${combo}`;
+    comboBadge.classList.add('show');
+  } else {
+    comboBadge.classList.remove('show');
+  }
+}
+
+// ===== Клик по шарику =====
+function handleClick(mx, my) {
+  if (gameState !== 'playing') return;
+
+  // Ищем самый верхний (последний в массиве) попавший шарик
+  for (let i = balloons.length - 1; i >= 0; i--) {
+    const b = balloons[i];
+    if (!b.alive) continue;
+    if (b.hitTest(mx, my)) {
+      b.alive = false;
+
+      // Частицы
+      for (let p = 0; p < 18; p++) {
+        particles.push(new Particle(b.x, b.y, b.colorData.hex));
+        particles.push(new Particle(b.x, b.y, b.colorData.light));
+      }
+
+      if (b.colorData === currentTargetColor) {
+        // Правильно!
+        combo++;
+        comboTimer = 2000;
+        const multiplier = Math.min(combo, 5);
+        const pts = 10 * multiplier;
+        score += pts;
+        scoreVal.textContent = score;
+        showScorePopup(mx, my - 30, `+${pts}`, b.colorData.hex);
+        playPop(Math.random());
+        updateCombo();
+      } else {
+        // Неправильно!
+        combo = 0;
+        comboTimer = 0;
+        lives--;
+        renderHearts();
+        showScorePopup(mx, my - 30, '-1', '#ff4466');
+        playBad();
+        shakeScreen();
+        updateCombo();
+        if (lives <= 0) {
+          endGame();
+          return;
+        }
+      }
+      return; // Лопаем только один шарик за клик
+    }
+  }
+}
+
+canvas.addEventListener('click', (e) => {
+  handleClick(e.clientX, e.clientY);
+});
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const t = e.touches[0];
+  handleClick(t.clientX, t.clientY);
+}, { passive: false });
+
+// ===== Спавн шариков =====
+function spawnBalloon() {
+  // Немного favoreм целевой цвет, чтобы игра не была скучной
+  let b;
+  if (Math.random() < 0.35) {
+    b = new Balloon();
+    b.colorData = currentTargetColor;
+  } else {
+    b = new Balloon();
+  }
+  balloons.push(b);
+}
+
+// ===== Игровой цикл =====
+function gameLoop(timestamp) {
+  if (!lastTime) lastTime = timestamp;
+  const dt = Math.min(timestamp - lastTime, 50);
+  lastTime = timestamp;
+
+  // Фон всегда рисуем
+  drawBackground(timestamp);
+
+  if (gameState === 'playing') {
+    // Таймер задания
+    taskTimeLeft -= dt;
+    if (taskTimeLeft <= 0) {
+      pickNewTask();
+    }
+    const taskProgress = Math.max(0, taskTimeLeft / taskDuration);
+    taskTimerBar.style.width = (taskProgress * 100) + '%';
+
+    // Комбо таймер
+    if (comboTimer > 0) {
+      comboTimer -= dt;
+      if (comboTimer <= 0) {
+        combo = 0;
+        updateCombo();
+      }
+    }
+
+    // Спавн
+    spawnTimer -= dt;
+    if (spawnTimer <= 0) {
+      spawnBalloon();
+      spawnTimer = spawnInterval * (0.7 + Math.random() * 0.6);
+    }
+
+    // Нарастание сложности
+    difficultyTimer += dt;
+    if (difficultyTimer > 15000) {
+      difficultyTimer = 0;
+      spawnInterval = Math.max(250, spawnInterval - 40);
+      if (taskDuration > 5000) taskDuration -= 300;
+    }
+
+    // Обновление шариков
+    for (const b of balloons) b.update(dt);
+    balloons = balloons.filter(b => b.alive);
+
+    // Обновление частиц
+    for (const p of particles) p.update();
+    particles = particles.filter(p => p.life > 0);
+
+    // Рисуем шарики
+    for (const b of balloons) b.draw(ctx);
+
+    // Рисуем частицы поверх
+    for (const p of particles) p.draw(ctx);
+  } else {
+    // На стартовом и конечном экранах тоже рисуем парочку шариков для атмосферы
+    for (const b of balloons) {
+      b.update(dt);
+      b.draw(ctx);
+    }
+    balloons = balloons.filter(b => b.alive);
+
+    // Спавним декоративные шарики
+    spawnTimer -= dt;
+    if (spawnTimer <= 0) {
+      spawnBalloon();
+      spawnTimer = 1200 + Math.random() * 800;
+    }
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+// ===== Старт / Рестарт =====
+function startGame() {
+  score = 0;
+  lives = maxLives;
+  combo = 0;
+  comboTimer = 0;
+  balloons = [];
+  particles = [];
+  spawnTimer = 0;
+  spawnInterval = 700;
+  taskDuration = 8000;
+  difficultyTimer = 0;
+  scoreVal.textContent = '0';
+  renderHearts();
+  pickNewTask();
+
+  startScreen.classList.add('hidden');
+  endScreen.classList.add('hidden');
+  hud.style.display = '';
+  taskPanel.style.display = '';
+  gameState = 'playing';
+}
+
+function endGame() {
+  gameState = 'ended';
+  hud.style.display = 'none';
+  taskPanel.style.display = 'none';
+  finalScore.textContent = score;
+  endScreen.classList.remove('hidden');
+}
+
+btnStart.addEventListener('click', startGame);
+btnRestart.addEventListener('click', startGame);
+
+// ===== Запуск =====
+// Декоративные шарики на фоне стартового экрана
+for (let i = 0; i < 6; i++) spawnBalloon();
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
