@@ -412,7 +412,10 @@
     <div id="album-screen">
         <div class="header">
             <h1>☁️ Фотохранилище GitHub</h1>
-            <button class="secondary" onclick="logout()" style="width: auto;">↪️ Выйти</button>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <button class="secondary" onclick="window.open('game.html','_blank')" style="width: auto;">🎮 Играть</button>
+                <button class="secondary" onclick="logout()" style="width: auto;">↪️ Выйти</button>
+            </div>
         </div>
 
         <div class="status-msg" id="status-msg"></div>
