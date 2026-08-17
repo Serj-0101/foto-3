@@ -3,463 +3,251 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Облачный Альбом</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet">
+    <title>Облачный Альбом на GitHub</title>
     <style>
         :root {
-            --bg: #0f0f0f;
-            --bg-elevated: #1a1a1a;
-            --card: #1e1e1e;
-            --border: #2a2a2a;
-            --fg: #f0ece4;
-            --muted: #777;
-            --accent: #d4a853;
-            --accent-hover: #c49640;
-            --danger: #e05252;
-            --danger-bg: rgba(224,82,82,0.12);
-            --success: #5cb87a;
-            --radius: 10px;
-            --shadow: 0 8px 32px rgba(0,0,0,0.45);
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-color: #ffffff;
+            --accent-color: #bb86fc;
+            --error-color: #cf6679;
         }
-
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            font-family: 'Source Sans 3', sans-serif;
-            background: var(--bg);
-            color: var(--fg);
-            min-height: 100vh;
-            overflow-x: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
-        /* === ФОНОВАЯ АТМОСФЕРА === */
-        body::before {
-            content: '';
-            position: fixed;
-            top: -30%; left: -10%;
-            width: 60vw; height: 60vw;
-            background: radial-gradient(circle, rgba(212,168,83,0.06) 0%, transparent 70%);
-            pointer-events: none;
-            z-index: 0;
+        #login-screen, #settings-screen {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100vh; background-color: var(--bg-color);
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 100;
         }
-        body::after {
-            content: '';
-            position: fixed;
-            bottom: -20%; right: -15%;
-            width: 50vw; height: 50vw;
-            background: radial-gradient(circle, rgba(212,168,83,0.04) 0%, transparent 70%);
-            pointer-events: none;
-            z-index: 0;
+        #settings-screen {
+            z-index: 200; background-color: rgba(18, 18, 18, 0.95);
         }
+        .hidden { display: none !important; }
 
-        /* === ЭКРАН ВХОДА === */
-        #login-screen {
-            position: fixed; inset: 0; z-index: 1000;
-            display: flex; align-items: center; justify-content: center;
-            background: var(--bg);
-            transition: opacity 0.5s, visibility 0.5s;
-        }
-        #login-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-
-        .login-box {
-            background: var(--bg-elevated);
-            border: 1px solid var(--border);
-            padding: 48px 40px;
-            border-radius: 16px;
-            box-shadow: var(--shadow);
-            text-align: center;
-            width: 340px;
-            max-width: 90vw;
+        .box {
+            background: var(--card-bg); padding: 40px; border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; width: 300px;
             position: relative;
-            z-index: 1;
         }
-        .login-box h2 {
-            font-family: 'Playfair Display', serif;
-            font-size: 28px;
-            margin-bottom: 8px;
-            color: var(--fg);
-        }
-        .login-box .subtitle {
-            font-size: 14px;
-            color: var(--muted);
-            margin-bottom: 32px;
-            font-weight: 300;
-        }
+        .settings-box { width: 450px; max-width: 90vw; padding: 30px; text-align: left; }
+        .settings-box h2, .settings-box p { text-align: center; }
 
-        .field { position: relative; margin-bottom: 20px; }
-        .field input {
-            width: 100%; padding: 14px 16px;
-            background: var(--bg); border: 1px solid var(--border);
-            border-radius: var(--radius); color: var(--fg);
-            font-size: 15px; font-family: inherit;
-            outline: none; transition: border-color 0.3s;
+        input[type="password"], input[type="text"], button {
+            width: 100%; padding: 12px; margin: 10px 0; border: none;
+            border-radius: 6px; box-sizing: border-box; font-size: 16px;
         }
-        .field input:focus { border-color: var(--accent); }
+        input[type="password"], input[type="text"] { background: #2c2c2c; color: white; outline: none; }
+        input[type="password"]:focus, input[type="text"]:focus { border: 1px solid var(--accent-color); }
+        
+        button {
+            background-color: var(--accent-color); color: #000; font-weight: bold;
+            cursor: pointer; transition: 0.3s;
+        }
+        button:hover { background-color: #a06cd5; }
+        button.secondary { background-color: #333; color: white; }
+        button.secondary:hover { background-color: #444; }
 
-        .btn {
-            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-            padding: 13px 24px; border: none; border-radius: var(--radius);
-            font-size: 15px; font-family: inherit; font-weight: 600;
-            cursor: pointer; transition: all 0.25s; text-decoration: none;
-        }
-        .btn-primary {
-            width: 100%; background: var(--accent); color: #0f0f0f;
-        }
-        .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
-        .btn-primary:active { transform: translateY(0); }
-        .btn-ghost {
-            background: transparent; color: var(--muted);
-            border: 1px solid var(--border); padding: 9px 18px; font-size: 13px;
-        }
-        .btn-ghost:hover { border-color: var(--muted); color: var(--fg); }
-        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+        #login-error { color: var(--error-color); font-size: 14px; margin-top: 10px; display: none; }
 
-        #login-error {
-            color: var(--danger); font-size: 13px;
-            margin-top: 14px; height: 20px;
-            opacity: 0; transition: opacity 0.3s;
+        .settings-btn {
+            position: absolute; top: 20px; right: 20px; width: auto;
+            background-color: #e63946; color: white; padding: 10px 18px; font-size: 14px;
+            font-weight: bold; border-radius: 8px; border: none;
+            box-shadow: 0 4px 10px rgba(230, 57, 70, 0.4); cursor: pointer;
+            transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;
         }
-        #login-error.show { opacity: 1; }
+        .settings-btn:hover { background-color: #ff4d5a; transform: translateY(-2px); }
 
-        /* === ОСНОВНОЙ ЭКРАН === */
-        #album-screen {
-            display: none; max-width: 1200px;
-            margin: 0 auto; padding: 32px 24px 80px;
-            position: relative; z-index: 1;
-        }
-        #album-screen.active { display: block; animation: fadeUp 0.6s ease; }
+        .settings-label { text-align: left; font-size: 12px; color: #aaa; margin-bottom: -5px; margin-top: 15px; display: block; }
 
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        #album-screen { display: none; width: 100%; max-width: 1200px; }
+        #album-screen.active { display: block; }
 
         .header {
             display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 36px; flex-wrap: wrap; gap: 16px;
-        }
-        .header-left h1 {
-            font-family: 'Playfair Display', serif;
-            font-size: clamp(26px, 4vw, 36px);
-            line-height: 1.2;
-        }
-        .photo-count {
-            font-size: 14px; color: var(--muted); font-weight: 300;
-            margin-top: 4px;
-        }
-        .photo-count span { color: var(--accent); font-weight: 600; }
-
-        /* === ЗОНА ЗАГРУЗКИ === */
-        .upload-zone {
-            border: 2px dashed var(--border);
-            border-radius: 14px; padding: 40px 20px;
-            text-align: center; cursor: pointer;
-            transition: all 0.3s; position: relative;
-            margin-bottom: 36px;
-            background: transparent;
-        }
-        .upload-zone:hover, .upload-zone.dragover {
-            border-color: var(--accent);
-            background: rgba(212,168,83,0.04);
-        }
-        .upload-zone.dragover { transform: scale(1.005); }
-        .upload-zone input {
-            position: absolute; inset: 0; opacity: 0; cursor: pointer;
-        }
-        .upload-zone h3 {
-            font-size: 17px; font-weight: 600; margin-bottom: 6px;
-        }
-        .upload-zone p { font-size: 13px; color: var(--muted); font-weight: 300; }
-        .upload-zone .icon { font-size: 32px; margin-bottom: 12px; display: block; opacity: 0.6; }
-
-        .upload-zone.uploading {
-            pointer-events: none; border-style: solid; border-color: var(--accent);
+            margin-bottom: 30px; border-bottom: 1px solid #333; padding-bottom: 20px;
         }
 
-        /* Прогресс-бар */
-        .progress-wrap {
-            display: none; margin-top: 16px;
+        .upload-area {
+            border: 2px dashed #444; padding: 30px; text-align: center;
+            border-radius: 10px; cursor: pointer; transition: 0.3s;
+            margin-bottom: 30px; position: relative;
         }
-        .progress-wrap.active { display: block; }
-        .progress-bar-bg {
-            height: 4px; background: var(--border); border-radius: 4px; overflow: hidden;
-        }
-        .progress-bar-fill {
-            height: 100%; background: var(--accent); border-radius: 4px;
-            width: 0%; transition: width 0.3s;
-        }
-        .progress-text {
-            font-size: 12px; color: var(--muted); margin-top: 8px; font-weight: 300;
-        }
+        .upload-area:hover { border-color: var(--accent-color); background: rgba(187, 134, 252, 0.05); }
+        .upload-area input { position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer; }
 
-        /* === СТАТУС === */
-        .status-bar {
-            text-align: center; padding: 12px; border-radius: var(--radius);
-            margin-bottom: 24px; font-size: 14px; font-weight: 400;
-            display: none; animation: fadeUp 0.3s ease;
-        }
-        .status-bar.active { display: block; }
-        .status-bar.loading { background: rgba(212,168,83,0.08); color: var(--accent); }
-        .status-bar.error { background: var(--danger-bg); color: var(--danger); }
-        .status-bar.success { background: rgba(92,184,122,0.08); color: var(--success); }
-
-        /* === ГАЛЕРЕЯ === */
-        .gallery {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            gap: 20px;
-        }
-
+        .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+        
         .gallery-item {
-            background: var(--card);
-            border-radius: var(--radius);
-            overflow: hidden;
-            position: relative;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.3);
-            transition: transform 0.3s, box-shadow 0.3s;
-            animation: cardIn 0.4s ease both;
+            background: var(--card-bg); border-radius: 8px; overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3); transition: transform 0.2s; position: relative;
         }
-        .gallery-item:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-        }
+        .gallery-item:hover { transform: translateY(-5px); }
+        .gallery-item img { width: 100%; height: 250px; object-fit: cover; display: block; }
 
-        @keyframes cardIn {
-            from { opacity: 0; transform: translateY(16px) scale(0.97); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+        .delete-btn {
+            position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7);
+            color: var(--error-color); border: none; border-radius: 15px; width: auto;
+            padding: 5px 10px; cursor: pointer; font-size: 14px; opacity: 0; transition: 0.3s;
         }
+        .gallery-item:hover .delete-btn { opacity: 1; }
 
-        .gallery-item img {
-            width: 100%; height: 240px; object-fit: cover; display: block;
-            cursor: zoom-in; transition: opacity 0.4s;
-            background: var(--bg);
+        .loader {
+            border: 4px solid #333; border-top: 4px solid var(--accent-color);
+            border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite;
+            margin: 20px auto; display: none;
         }
-        .gallery-item img.loading-img { opacity: 0; }
-        .gallery-item img.loaded-img { opacity: 1; }
+        .status-msg { text-align: center; color: #aaa; margin-bottom: 20px; font-style: italic; }
 
-        .item-overlay {
-            position: absolute; inset: 0;
-            background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%);
-            opacity: 0; transition: opacity 0.3s;
-            display: flex; align-items: flex-end; justify-content: flex-end;
-            padding: 14px; gap: 8px;
-        }
-        .gallery-item:hover .item-overlay { opacity: 1; }
-
-        .icon-btn {
-            width: 36px; height: 36px; border-radius: 50%;
-            border: none; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 16px; transition: all 0.2s;
-        }
-        .icon-btn-delete {
-            background: rgba(224,82,82,0.85); color: #fff;
-        }
-        .icon-btn-delete:hover { background: var(--danger); transform: scale(1.1); }
-        .icon-btn-view {
-            background: rgba(255,255,255,0.15); color: #fff;
-            backdrop-filter: blur(4px);
-        }
-        .icon-btn-view:hover { background: rgba(255,255,255,0.25); transform: scale(1.1); }
-
-        .empty-state {
-            grid-column: 1 / -1; text-align: center;
-            padding: 60px 20px; color: var(--muted);
-        }
-        .empty-state .icon { font-size: 48px; margin-bottom: 16px; display: block; opacity: 0.3; }
-        .empty-state p { font-size: 15px; font-weight: 300; }
-
-        /* === ЛАЙТБОКС === */
-        .lightbox {
-            position: fixed; inset: 0; z-index: 2000;
-            background: rgba(0,0,0,0.92);
-            display: flex; align-items: center; justify-content: center;
-            opacity: 0; visibility: hidden;
-            transition: opacity 0.3s, visibility 0.3s;
-            backdrop-filter: blur(8px);
-        }
-        .lightbox.open { opacity: 1; visibility: visible; }
-        .lightbox img {
-            max-width: 90vw; max-height: 90vh;
-            border-radius: 6px; box-shadow: 0 0 60px rgba(0,0,0,0.6);
-            transition: transform 0.3s;
-            cursor: zoom-out;
-        }
-        .lightbox.open img { animation: lbIn 0.35s ease; }
-        @keyframes lbIn {
-            from { transform: scale(0.9); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-        .lightbox-close {
-            position: absolute; top: 20px; right: 24px;
-            background: none; border: none; color: #fff;
-            font-size: 32px; cursor: pointer; opacity: 0.6;
-            transition: opacity 0.2s; line-height: 1;
-        }
-        .lightbox-close:hover { opacity: 1; }
-        .lightbox-nav {
-            position: absolute; top: 50%; transform: translateY(-50%);
-            background: rgba(255,255,255,0.1); border: none; color: #fff;
-            width: 48px; height: 48px; border-radius: 50%;
-            font-size: 22px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: background 0.2s;
-            backdrop-filter: blur(4px);
-        }
-        .lightbox-nav:hover { background: rgba(255,255,255,0.2); }
-        .lightbox-nav.prev { left: 20px; }
-        .lightbox-nav.next { right: 20px; }
-        .lightbox-counter {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-            color: rgba(255,255,255,0.5); font-size: 13px; font-weight: 300;
-        }
-
-        /* === ТОСТ === */
-        .toast-container {
-            position: fixed; bottom: 24px; right: 24px; z-index: 3000;
-            display: flex; flex-direction: column; gap: 8px;
-        }
-        .toast {
-            padding: 14px 20px; border-radius: var(--radius);
-            font-size: 14px; font-weight: 400;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-            animation: toastIn 0.35s ease, toastOut 0.3s ease 2.7s forwards;
-            max-width: 360px;
-        }
-        .toast.error { background: #2a1515; color: var(--danger); border: 1px solid rgba(224,82,82,0.2); }
-        .toast.success { background: #152a1c; color: var(--success); border: 1px solid rgba(92,184,122,0.2); }
-        .toast.info { background: #1a1a10; color: var(--accent); border: 1px solid rgba(212,168,83,0.2); }
-
-        @keyframes toastIn { from { opacity:0; transform: translateX(40px); } to { opacity:1; transform: translateX(0); } }
-        @keyframes toastOut { to { opacity:0; transform: translateX(40px); } }
-
-        /* === РЕСПОНСИВ === */
-        @media (max-width: 600px) {
-            #album-screen { padding: 20px 14px 60px; }
-            .gallery { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
-            .gallery-item img { height: 160px; }
-            .upload-zone { padding: 28px 16px; }
-            .lightbox-nav { width: 40px; height: 40px; font-size: 18px; }
-            .lightbox-nav.prev { left: 10px; }
-            .lightbox-nav.next { right: 10px; }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important;
-                transition-duration: 0.01ms !important;
-            }
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @media (max-width: 600px) { .header button { width: auto; padding: 10px 15px; } }
     </style>
 </head>
 <body>
 
-    <!-- Экран входа -->
+    <!-- ЭКРАН ВХОДА -->
     <div id="login-screen">
-        <div class="login-box">
-            <h2>Облачный Альбом</h2>
-            <p class="subtitle">Введите пароль для доступа</p>
-            <div class="field">
-                <input type="password" id="password-input" placeholder="Пароль" autocomplete="current-password">
-            </div>
-            <button class="btn btn-primary" id="login-btn" onclick="checkPassword()">Войти</button>
+        <button class="settings-btn" onclick="openSettings()" title="Настройки GitHub">⚙️ Настройки</button>
+        <div class="box">
+            <h2>Вход в альбом</h2>
+            <input type="password" id="password-input" placeholder="Введите пароль">
+            <button onclick="checkPassword()">Войти</button>
             <div id="login-error">Неверный пароль</div>
         </div>
     </div>
 
-    <!-- Основной экран -->
+    <!-- МЕНЮ НАСТРОЕК -->
+    <div id="settings-screen" class="hidden">
+        <div class="box settings-box">
+            <h2>Настройки GitHub</h2>
+            <p style="font-size: 13px; color: #aaa;">Нужен токен с правами <b>repo</b></p>
+            
+            <label class="settings-label">GitHub Token (Personal Access Token)</label>
+            <input type="text" id="set-token" placeholder="ghp_xxxxxxxxxxxxxxxx">
+
+            <label class="settings-label">Владелец репозитория (Owner)</label>
+            <input type="text" id="set-owner" placeholder="serj-0101">
+
+            <label class="settings-label">Название репозитория (Repo)</label>
+            <input type="text" id="set-repo" placeholder="foto-3">
+
+            <label class="settings-label">Ветка (Branch)</label>
+            <input type="text" id="set-branch" placeholder="main">
+
+            <label class="settings-label">Пароль для входа (локальный)</label>
+            <input type="text" id="set-password" placeholder="Придумайте пароль">
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button onclick="saveSettings()">Сохранить</button>
+                <button class="secondary" onclick="closeSettings()">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ЭКРАН АЛЬБОМА -->
     <div id="album-screen">
-        <header class="header">
-            <div class="header-left">
-                <h1>Облачный Альбом</h1>
-                <div class="photo-count" id="photo-count"></div>
-            </div>
-            <button class="btn btn-ghost" onclick="logout()">Выйти</button>
-        </header>
+        <div class="header">
+            <h1>Фотохранилище GitHub ☁️</h1>
+            <button class="secondary" onclick="logout()" style="width: auto;">Выйти</button>
+        </div>
 
-        <div class="status-bar" id="status-bar"></div>
+        <div class="status-msg" id="status-msg">Синхронизация с репозиторием...</div>
 
-        <div class="upload-zone" id="upload-zone">
-            <span class="icon">&#9729;</span>
-            <h3>Нажмите или перетащите фотографии</h3>
-            <p>JPG, PNG, GIF, WebP — до 32 МБ каждый</p>
-            <input type="file" id="file-input" multiple accept="image/*">
-            <div class="progress-wrap" id="progress-wrap">
-                <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill"></div></div>
-                <div class="progress-text" id="progress-text"></div>
-            </div>
+        <div class="upload-area" id="upload-area">
+            <h3>Нажмите или перетащите фотографии сюда</h3>
+            <p>Они сохранятся прямо в ваш GitHub репозиторий</p>
+            <input type="file" id="file-input" multiple accept="image/*" onchange="handleFiles(this.files)">
+            <div class="loader" id="upload-loader"></div>
         </div>
 
         <div class="gallery" id="gallery"></div>
     </div>
 
-    <!-- Лайтбокс -->
-    <div class="lightbox" id="lightbox" role="dialog" aria-label="Просмотр фотографии">
-        <button class="lightbox-close" onclick="closeLightbox()" aria-label="Закрыть">&times;</button>
-        <button class="lightbox-nav prev" onclick="navLightbox(-1)" aria-label="Предыдущая">&#8249;</button>
-        <img id="lightbox-img" src="" alt="Полный размер">
-        <button class="lightbox-nav next" onclick="navLightbox(1)" aria-label="Следующая">&#8250;</button>
-        <div class="lightbox-counter" id="lightbox-counter"></div>
-    </div>
-
-    <!-- Тосты -->
-    <div class="toast-container" id="toast-container"></div>
-
     <script>
-        // ======================================================
-        // === КОНФИГУРАЦИЯ — ЗАМЕНИТЕ НА СВОИ ДАННЫЕ ===
-        // ======================================================
-        const IMGBB_API_KEY  = '6a8307442db5a174c3e97d1ab8d4f1df';
-        const JSONBIN_API_KEY = '$2a$10$l62qBcH24mWekTtbVA9Jn.vtzor/phnkkjFNIaJKf1ei2QUC1gUO.';
-        const BIN_ID          = 'hulio'; // <-- ВСТАВЬТЕ РЕАЛЬНЫЙ ID BIN'А
-        const CORRECT_PASSWORD = '1234';
-        // ======================================================
+        // Настройки по умолчанию
+        const DEFAULT_CONFIG = {
+            token: '',
+            owner: 'serj-0101',
+            repo: 'foto-3',
+            branch: 'main',
+            password: '1234'
+        };
 
-        let cloudPhotos = [];
-        let currentLightboxIndex = 0;
+        let config = { ...DEFAULT_CONFIG };
+        let cloudPhotos = []; // Формат: [{url: "...", sha: "...", path: "..."}]
 
-        // === ТОСТЫ ===
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.textContent = message;
-            container.appendChild(toast);
-            setTimeout(() => toast.remove(), 3200);
+        function loadConfig() {
+            config.token = localStorage.getItem('gh_token') || DEFAULT_CONFIG.token;
+            config.owner = localStorage.getItem('gh_owner') || DEFAULT_CONFIG.owner;
+            config.repo = localStorage.getItem('gh_repo') || DEFAULT_CONFIG.repo;
+            config.branch = localStorage.getItem('gh_branch') || DEFAULT_CONFIG.branch;
+            config.password = localStorage.getItem('gh_password') || DEFAULT_CONFIG.password;
+        }
+        
+        loadConfig();
+
+        // Базовый URL для обращения к API GitHub
+        function getApiUrl(path = '') {
+            return `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${path}`;
         }
 
-        // === СТАТУС-БАР ===
-        function setStatus(text, type = 'loading') {
-            const bar = document.getElementById('status-bar');
-            bar.textContent = text;
-            bar.className = `status-bar active ${type}`;
-        }
-        function hideStatus() {
-            document.getElementById('status-bar').className = 'status-bar';
-        }
-
-        // === СЧЁТЧИК ===
-        function updateCount() {
-            const el = document.getElementById('photo-count');
-            const n = cloudPhotos.length;
-            const word = n === 0 ? 'Нет фотографий' :
-                         n === 1 ? '1 фотография' :
-                         n < 5 ? `${n} фотографии` : `${n} фотографий`;
-            el.innerHTML = n > 0 ? `<span>${n}</span> ${word} в альбоме` : word;
+        // --- ЛОГИКА НАСТРОЕК ---
+        function openSettings() {
+            document.getElementById('set-token').value = config.token;
+            document.getElementById('set-owner').value = config.owner;
+            document.getElementById('set-repo').value = config.repo;
+            document.getElementById('set-branch').value = config.branch;
+            document.getElementById('set-password').value = config.password;
+            document.getElementById('settings-screen').classList.remove('hidden');
         }
 
-        // === АВТОРИЗАЦИЯ ===
+        function closeSettings() {
+            document.getElementById('settings-screen').classList.add('hidden');
+        }
+
+        function saveSettings() {
+            config.token = document.getElementById('set-token').value.trim();
+            config.owner = document.getElementById('set-owner').value.trim();
+            config.repo = document.getElementById('set-repo').value.trim();
+            config.branch = document.getElementById('set-branch').value.trim();
+            config.password = document.getElementById('set-password').value.trim();
+
+            if (!config.token || !config.owner || !config.repo || !config.branch || !config.password) {
+                alert('Пожалуйста, заполните все поля!');
+                return;
+            }
+
+            localStorage.setItem('gh_token', config.token);
+            localStorage.setItem('gh_owner', config.owner);
+            localStorage.setItem('gh_repo', config.repo);
+            localStorage.setItem('gh_branch', config.branch);
+            localStorage.setItem('gh_password', config.password);
+
+            closeSettings();
+            alert('Настройки успешно сохранены!');
+        }
+
+        // --- АВТОРИЗАЦИЯ ---
         function checkPassword() {
             const pass = document.getElementById('password-input').value;
-            if (pass === CORRECT_PASSWORD) {
+            if (pass === config.password) {
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('album-screen').classList.add('active');
-                loadGallery();
+                loadGalleryFromCloud();
             } else {
                 const err = document.getElementById('login-error');
-                err.classList.add('show');
-                setTimeout(() => err.classList.remove('show'), 2500);
+                err.style.display = 'block';
+                setTimeout(() => err.style.display = 'none', 2000);
             }
         }
 
@@ -470,250 +258,234 @@
             cloudPhotos = [];
         }
 
-        document.getElementById('password-input').addEventListener('keydown', e => {
-            if (e.key === 'Enter') checkPassword();
-        });
-
-        // === JSONBin ===
-        async function fetchCloud() {
-            const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest?_=${Date.now()}`, {
-                headers: {
-                    'X-Master-Key': JSONBIN_API_KEY,
-                    'Cache-Control': 'no-cache, no-store',
-                    'Pragma': 'no-cache'
-                },
-                cache: 'no-store'
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}. Проверьте BIN_ID.`);
+        // --- РАБОТА С GITHUB API ---
+        
+        // Чтение data.json (без авторизации, через raw.githubusercontent для скорости)
+        async function fetchCloudData() {
+            const rawUrl = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${config.branch}/data.json`;
+            const res = await fetch(rawUrl + '?t=' + new Date().getTime());
+            if (!res.ok) throw new Error('Файл данных еще не создан');
             const data = await res.json();
-            return Array.isArray(data.record) ? data.record :
-                   Array.isArray(data.record?.photos) ? data.record.photos : [];
+            return data.photos || [];
         }
 
-        async function saveCloud(arr) {
-            const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+        // Обновление data.json в репозитории (с авторизацией)
+        async function updateDataJson(photosArray) {
+            const apiUrl = getApiUrl('data.json');
+            const headers = {
+                'Authorization': `token ${config.token}`,
+                'Accept': 'application/vnd.github.v3+json'
+            };
+
+            let sha = null;
+            
+            // Получаем текущий SHA файла, чтобы его перезаписать
+            try {
+                const metaRes = await fetch(apiUrl, { headers });
+                if (metaRes.ok) {
+                    const metaData = await metaRes.json();
+                    sha = metaData.sha;
+                }
+            } catch (e) {}
+
+            const content = btoa(unescape(encodeURIComponent(JSON.stringify({ photos: photosArray }))));
+
+            const body = {
+                message: `Update gallery (${new Date().toLocaleString()})`,
+                content: content,
+                branch: config.branch
+            };
+            if (sha) body.sha = sha; // Если файл есть, передаем SHA
+
+            const res = await fetch(apiUrl, {
+                method: 'PUT',
+                headers: headers,
+                body: JSON.stringify(body)
+            });
+
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.message || 'Ошибка сохранения data.json');
+            }
+        }
+
+        // Загрузка картинки в папку images/
+        async function uploadImageToGitHub(file) {
+            const base64 = await getBase64(file);
+            const cleanBase64 = base64.split(',')[1]; // Убираем префикс data:image/...
+            
+            const fileName = Date.now() + '_' + file.name.replace(/\s+/g, '_');
+            const path = `images/${fileName}`;
+            const apiUrl = getApiUrl(path);
+
+            const res = await fetch(apiUrl, {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-Master-Key': JSONBIN_API_KEY
+                    'Authorization': `token ${config.token}`,
+                    'Accept': 'application/vnd.github.v3+json'
                 },
-                body: JSON.stringify(arr)
+                body: JSON.stringify({
+                    message: `Upload ${fileName}`,
+                    content: cleanBase64,
+                    branch: config.branch
+                })
             });
-            if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.message || 'Ошибка загрузки картинки');
+            }
+
+            const data = await res.json();
+            const displayUrl = `https://${config.owner}.github.io/${config.repo}/${path}`;
+            
+            return { url: displayUrl, sha: data.content.sha, path: path };
         }
 
-        // === ImgBB ===
-        function fileToBase64(file) {
+        // Удаление картинки из репозитория
+        async function deleteImageFromGitHub(path, sha) {
+            const apiUrl = getApiUrl(path);
+            const res = await fetch(apiUrl, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `token ${config.token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                },
+                body: JSON.stringify({
+                    message: `Delete ${path}`,
+                    sha: sha,
+                    branch: config.branch
+                })
+            });
+            if (!res.ok) throw new Error('Ошибка удаления файла');
+        }
+
+        // --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
+        function getBase64(file) {
             return new Promise((resolve, reject) => {
-                const r = new FileReader();
-                r.onload = () => resolve(r.result);
-                r.onerror = reject;
-                r.readAsDataURL(file);
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
             });
         }
 
-        async function uploadToImgBB(file) {
-            const b64 = await fileToBase64(file);
-            const fd = new FormData();
-            fd.append('image', b64.split(',')[1]);
-            const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-                method: 'POST', body: fd
-            });
-            const json = await res.json();
-            if (!json.success) throw new Error('ImgBB отклонил загрузку');
-            return json.data.display_url;
-        }
+        // --- ЛОГИКА ГАЛЕРЕИ ---
+        async function loadGalleryFromCloud() {
+            const status = document.getElementById('status-msg');
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = '';
+            status.innerText = 'Загрузка данных из репозитория...';
+            status.style.display = 'block';
+            status.style.color = '#aaa';
 
-        // === ГАЛЕРЕЯ ===
-        async function loadGallery() {
-            setStatus('Синхронизация с облаком...');
             try {
-                cloudPhotos = await fetchCloud();
-                hideStatus();
-                updateCount();
+                cloudPhotos = await fetchCloudData();
+                status.style.display = 'none';
                 renderGallery();
             } catch (e) {
-                setStatus('Не удалось подключиться к облаку. Проверьте BIN_ID и ключи.', 'error');
-                console.error(e);
+                if (e.message.includes('Файл данных еще не создан')) {
+                    cloudPhotos = [];
+                    status.style.display = 'none';
+                    renderGallery();
+                } else {
+                    status.innerText = 'Ошибка! Проверьте настройки (Owner, Repo, Branch).';
+                    status.style.color = '#cf6679';
+                    console.error(e);
+                }
             }
         }
 
         function renderGallery() {
             const gallery = document.getElementById('gallery');
             gallery.innerHTML = '';
-
+            
             if (cloudPhotos.length === 0) {
-                gallery.innerHTML = `
-                    <div class="empty-state">
-                        <span class="icon">&#128247;</span>
-                        <p>Альбом пуст. Загрузите первую фотографию!</p>
-                    </div>`;
+                gallery.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color:#666;">Альбом пуст. Загрузите первую фотографию!</p>';
                 return;
             }
 
-            cloudPhotos.forEach((url, i) => {
-                const item = document.createElement('div');
-                item.className = 'gallery-item';
-                item.style.animationDelay = `${Math.min(i * 0.05, 0.6)}s`;
-
-                const img = document.createElement('img');
-                img.src = url;
-                img.alt = `Фото ${i + 1}`;
-                img.loading = 'lazy';
-                img.className = 'loading-img';
-                img.onload = () => { img.classList.remove('loading-img'); img.classList.add('loaded-img'); };
-                img.onerror = () => { item.remove(); };
-                img.onclick = () => openLightbox(i);
-
-                const overlay = document.createElement('div');
-                overlay.className = 'item-overlay';
-                overlay.innerHTML = `
-                    <button class="icon-btn icon-btn-view" onclick="openLightbox(${i})" aria-label="Открыть">&#128269;</button>
-                    <button class="icon-btn icon-btn-delete" onclick="deletePhoto(${i})" aria-label="Удалить">&#128465;</button>
+            cloudPhotos.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'gallery-item';
+                div.innerHTML = `
+                    <img src="${item.url}" alt="Фото" loading="lazy" onerror="this.parentElement.remove()">
+                    <button class="delete-btn" onclick="deletePhoto(${index})">🗑 Удалить</button>
                 `;
-
-                item.appendChild(img);
-                item.appendChild(overlay);
-                gallery.appendChild(item);
+                gallery.appendChild(div);
             });
         }
 
-        // === ЗАГРУЗКА ФАЙЛОВ ===
-        const uploadZone = document.getElementById('upload-zone');
-        const fileInput = document.getElementById('file-input');
-        const progressWrap = document.getElementById('progress-wrap');
-        const progressFill = document.getElementById('progress-fill');
-        const progressText = document.getElementById('progress-text');
-
-        // Drag & drop
-        uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-        uploadZone.addEventListener('drop', e => {
-            e.preventDefault();
-            uploadZone.classList.remove('dragover');
-            const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
-            if (files.length) handleFiles(files);
-            else showToast('Перетащите файлы изображений', 'error');
-        });
-
-        fileInput.addEventListener('change', () => {
-            if (fileInput.files.length) handleFiles([...fileInput.files]);
-        });
-
         async function handleFiles(files) {
-            uploadZone.classList.add('uploading');
-            progressWrap.classList.add('active');
-            progressFill.style.width = '0%';
-
-            const newUrls = [];
-            for (let i = 0; i < files.length; i++) {
-                const pct = Math.round(((i) / files.length) * 100);
-                progressFill.style.width = pct + '%';
-                progressText.textContent = `Загрузка ${i + 1} из ${files.length} — ${files[i].name}`;
-                try {
-                    const url = await uploadToImgBB(files[i]);
-                    newUrls.push(url);
-                } catch (e) {
-                    showToast(`Ошибка: ${files[i].name}`, 'error');
-                }
-            }
-
-            progressFill.style.width = '100%';
-            progressText.textContent = 'Сохранение в облако...';
+            const loader = document.getElementById('upload-loader');
+            const uploadArea = document.getElementById('upload-area');
+            const status = document.getElementById('status-msg');
+            
+            loader.style.display = 'block';
+            uploadArea.style.pointerEvents = 'none';
+            status.style.display = 'block';
+            status.style.color = '#aaa';
 
             try {
-                const latest = await fetchCloud();
-                cloudPhotos = [...latest, ...newUrls];
-                await saveCloud(cloudPhotos);
-                showToast(`Загружено ${newUrls.length} ${plural(newUrls.length, 'фото', 'фото', 'фотографий')}`, 'success');
+                // 1. Получаем актуальный список фото
+                cloudPhotos = await fetchCloudData().catch(() => []);
+
+                for (let i = 0; i < files.length; i++) {
+                    status.innerText = `Загрузка файла ${i + 1} из ${files.length} в GitHub...`;
+                    const newFileData = await uploadImageToGitHub(files[i]);
+                    cloudPhotos.push(newFileData);
+                }
+
+                status.innerText = 'Обновление базы данных...';
+                await updateDataJson(cloudPhotos);
+                status.style.display = 'none';
+                renderGallery();
+
             } catch (e) {
-                showToast('Ошибка сохранения в облако', 'error');
+                status.innerText = `ОШИБКА: ${e.message}`;
+                status.style.color = '#cf6679';
                 console.error(e);
+                // Возвращаем старый список в случае ошибки
+                loadGalleryFromCloud(); 
             }
-
-            uploadZone.classList.remove('uploading');
-            progressWrap.classList.remove('active');
-            fileInput.value = '';
-            hideStatus();
-            updateCount();
-            renderGallery();
+            
+            loader.style.display = 'none';
+            uploadArea.style.pointerEvents = 'auto';
+            document.getElementById('file-input').value = '';
         }
 
-        function plural(n, one, two, five) {
-            const abs = Math.abs(n) % 100;
-            const n1 = abs % 10;
-            if (abs > 10 && abs < 20) return five;
-            if (n1 > 1 && n1 < 5) return two;
-            if (n1 === 1) return one;
-            return five;
-        }
-
-        // === УДАЛЕНИЕ ===
         async function deletePhoto(index) {
-            if (!confirm('Удалить эту фотографию навсегда?')) return;
-            setStatus('Удаление...');
+            if(!confirm('Удалить это фото из репозитория навсегда?')) return;
+            
+            const status = document.getElementById('status-msg');
+            status.style.display = 'block';
+            status.style.color = '#aaa';
+            status.innerText = 'Удаление файла...';
+
             try {
-                const latest = await fetchCloud();
-                if (index < latest.length) {
-                    latest.splice(index, 1);
-                    cloudPhotos = latest;
-                    await saveCloud(cloudPhotos);
-                    showToast('Фотография удалена', 'info');
-                }
-                hideStatus();
+                const photoToDelete = cloudPhotos[index];
+                
+                // Удаляем саму картинку
+                await deleteImageFromGitHub(photoToDelete.path, photoToDelete.sha);
+                
+                // Удаляем из массива
+                cloudPhotos.splice(index, 1);
+                
+                // Обновляем data.json
+                await updateDataJson(cloudPhotos);
+                
+                status.style.display = 'none';
+                renderGallery();
             } catch (e) {
-                setStatus('Ошибка при удалении', 'error');
+                status.innerText = `Ошибка удаления: ${e.message}`;
+                status.style.color = '#cf6679';
                 console.error(e);
             }
-            updateCount();
-            renderGallery();
         }
 
-        // === ЛАЙТБОКС ===
-        function openLightbox(index) {
-            if (!cloudPhotos[index]) return;
-            currentLightboxIndex = index;
-            const lb = document.getElementById('lightbox');
-            const img = document.getElementById('lightbox-img');
-            const counter = document.getElementById('lightbox-counter');
-            img.src = cloudPhotos[index];
-            counter.textContent = `${index + 1} / ${cloudPhotos.length}`;
-            lb.classList.add('open');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeLightbox() {
-            document.getElementById('lightbox').classList.remove('open');
-            document.body.style.overflow = '';
-        }
-
-        function navLightbox(dir) {
-            let next = currentLightboxIndex + dir;
-            if (next < 0) next = cloudPhotos.length - 1;
-            if (next >= cloudPhotos.length) next = 0;
-            openLightbox(next);
-        }
-
-        // Закрытие лайтбокса: клик по фону, Escape, свайп
-        document.getElementById('lightbox').addEventListener('click', e => {
-            if (e.target === e.currentTarget) closeLightbox();
+        document.getElementById('password-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') checkPassword();
         });
-        document.addEventListener('keydown', e => {
-            if (!document.getElementById('lightbox').classList.contains('open')) return;
-            if (e.key === 'Escape') closeLightbox();
-            if (e.key === 'ArrowLeft') navLightbox(-1);
-            if (e.key === 'ArrowRight') navLightbox(1);
-        });
-
-        // Свайп на мобильных
-        let touchStartX = 0;
-        document.getElementById('lightbox').addEventListener('touchstart', e => {
-            touchStartX = e.changedTouches[0].screenX;
-        }, { passive: true });
-        document.getElementById('lightbox').addEventListener('touchend', e => {
-            const diff = e.changedTouches[0].screenX - touchStartX;
-            if (Math.abs(diff) > 60) navLightbox(diff > 0 ? -1 : 1);
-        }, { passive: true });
     </script>
 </body>
 </html>
