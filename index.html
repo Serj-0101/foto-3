@@ -260,21 +260,54 @@
 
         // --- РАБОТА С GITHUB API ---
         
-        // Чтение data.json (без авторизации, через raw.githubusercontent для скорости)
+        // Чтение data.json (через raw.githubusercontent для скорости)
         async function fetchCloudData() {
             const rawUrl = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${config.branch}/data.json`;
             const res = await fetch(rawUrl + '?t=' + new Date().getTime());
             if (!res.ok) throw new Error('Файл данных еще не создан');
             const data = await res.json();
-            return data.photos || [];
+            const photos = data.photos || [];
+            // Попытаться обогатить объекты (получить sha если нужно)
+            return await enrichPhotos(photos);
+        }
+
+        // Пополняем объект photo.sha при наличии path, если SHA не указан
+        async function enrichPhotos(photos) {
+            if (!Array.isArray(photos)) return [];
+            const result = [];
+            for (const p of photos) {
+                const photo = { ...p };
+                // Если нет url, но есть path, формируем raw URL
+                if ((!photo.url || photo.url.indexOf('raw.githubusercontent.com') === -1) && photo.path) {
+                    photo.url = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${config.branch}/${photo.path}`;
+                }
+                // Если нет sha, попробуем получить через API (требует токена для приватных реп)
+                if (!photo.sha && photo.path && config.token) {
+                    try {
+                        const apiUrl = getApiUrl(photo.path);
+                        const res = await fetch(apiUrl, { headers: { 'Authorization': `token ${config.token}`, 'Accept': 'application/vnd.github.v3+json' } });
+                        if (res.ok) {
+                            const meta = await res.json();
+                            if (meta && meta.sha) photo.sha = meta.sha;
+                        }
+                    } catch (e) {
+                        console.warn('Не удалось получить SHA для', photo.path, e);
+                    }
+                }
+                result.push(photo);
+            }
+            return result;
         }
 
         // Обновление data.json в репозитории (с авторизацией)
         async function updateDataJson(photosArray) {
+            if (!config.token) throw new Error('Требуется GitHub token для записи в репозитории');
+
             const apiUrl = getApiUrl('data.json');
             const headers = {
                 'Authorization': `token ${config.token}`,
-                'Accept': 'application/vnd.github.v3+json'
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json'
             };
 
             let sha = null;
@@ -288,7 +321,8 @@
                 }
             } catch (e) {}
 
-            const content = btoa(unescape(encodeURIComponent(JSON.stringify({ photos: photosArray }))));
+            const payload = JSON.stringify({ photos: photosArray });
+            const content = btoa(unescape(encodeURIComponent(payload)));
 
             const body = {
                 message: `Update gallery (${new Date().toLocaleString()})`,
@@ -304,13 +338,15 @@
             });
 
             if (!res.ok) {
-                const errData = await res.json();
+                const errData = await res.json().catch(() => ({}));
                 throw new Error(errData.message || 'Ошибка сохранения data.json');
             }
         }
 
         // Загрузка картинки в папку images/
         async function uploadImageToGitHub(file) {
+            if (!config.token) throw new Error('Требуется GitHub token для загрузки файлов');
+
             const base64 = await getBase64(file);
             const cleanBase64 = base64.split(',')[1]; // Убираем префикс data:image/...
             
@@ -322,7 +358,8 @@
                 method: 'PUT',
                 headers: {
                     'Authorization': `token ${config.token}`,
-                    'Accept': 'application/vnd.github.v3+json'
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     message: `Upload ${fileName}`,
@@ -332,24 +369,27 @@
             });
 
             if (!res.ok) {
-                const errData = await res.json();
+                const errData = await res.json().catch(() => ({}));
                 throw new Error(errData.message || 'Ошибка загрузки картинки');
             }
 
             const data = await res.json();
-            const displayUrl = `https://${config.owner}.github.io/${config.repo}/${path}`;
-            
-            return { url: displayUrl, sha: data.content.sha, path: path };
+            // Используем raw.githubusercontent для прямого доступа к изображению
+            const displayUrl = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${config.branch}/${path}`;
+            return { url: displayUrl, sha: data.content && data.content.sha ? data.content.sha : null, path: path };
         }
 
         // Удаление картинки из репозитория
         async function deleteImageFromGitHub(path, sha) {
+            if (!config.token) throw new Error('Требуется GitHub token для удаления файлов');
+
             const apiUrl = getApiUrl(path);
             const res = await fetch(apiUrl, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `token ${config.token}`,
-                    'Accept': 'application/vnd.github.v3+json'
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     message: `Delete ${path}`,
@@ -357,7 +397,10 @@
                     branch: config.branch
                 })
             });
-            if (!res.ok) throw new Error('Ошибка удаления файла');
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || 'Ошибка удаления файла');
+            }
         }
 
         // --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
@@ -368,6 +411,19 @@
                 reader.onload = () => resolve(reader.result);
                 reader.onerror = error => reject(error);
             });
+        }
+
+        async function fetchFileSha(path) {
+            if (!config.token) return null;
+            try {
+                const apiUrl = getApiUrl(path);
+                const res = await fetch(apiUrl, { headers: { 'Authorization': `token ${config.token}`, 'Accept': 'application/vnd.github.v3+json' } });
+                if (!res.ok) return null;
+                const meta = await res.json();
+                return meta.sha || null;
+            } catch (e) {
+                return null;
+            }
         }
 
         // --- ЛОГИКА ГАЛЕРЕИ ---
@@ -384,12 +440,12 @@
                 status.style.display = 'none';
                 renderGallery();
             } catch (e) {
-                if (e.message.includes('Файл данных еще не создан')) {
+                if (e.message && e.message.includes('Файл данных еще не создан')) {
                     cloudPhotos = [];
                     status.style.display = 'none';
                     renderGallery();
                 } else {
-                    status.innerText = 'Ошибка! Проверьте настройки (Owner, Repo, Branch).';
+                    status.innerText = 'Ошибка! Проверьте настройки (Owner, Repo, Branch, Token).';
                     status.style.color = '#cf6679';
                     console.error(e);
                 }
@@ -427,6 +483,8 @@
             status.style.color = '#aaa';
 
             try {
+                if (!config.token) throw new Error('GitHub token не настроен. Откройте настройки и добавьте токен.');
+
                 // 1. Получаем актуальный список фото
                 cloudPhotos = await fetchCloudData().catch(() => []);
 
@@ -464,9 +522,17 @@
 
             try {
                 const photoToDelete = cloudPhotos[index];
-                
+                if (!photoToDelete) throw new Error('Фото не найдено');
+
+                // Если нет sha — пробуем получить
+                let sha = photoToDelete.sha;
+                if (!sha && photoToDelete.path) {
+                    sha = await fetchFileSha(photoToDelete.path);
+                }
+                if (!sha) throw new Error('SHA файла не найден. Невозможно удалить без SHA.');
+
                 // Удаляем саму картинку
-                await deleteImageFromGitHub(photoToDelete.path, photoToDelete.sha);
+                await deleteImageFromGitHub(photoToDelete.path, sha);
                 
                 // Удаляем из массива
                 cloudPhotos.splice(index, 1);
