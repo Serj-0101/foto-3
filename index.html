@@ -405,7 +405,7 @@
             <h1>☁️ Фотохранилище ImgBB</h1>
             <div style="display:flex; gap:10px; align-items:center;">
                 <button class="secondary" onclick="window.open('game.html','_blank')" style="width: auto;">🎮 Играть</button>
-                <button class="secondary" onclick="refreshFromPublicAlbum()" style="width: auto;">🔄 Обновить</button>
+                <button class="secondary" onclick="refreshFromImgBB()" style="width: auto;">🔄 Обновить</button>
                 <button class="secondary" onclick="logout()" style="width: auto;">↪️ Выйти</button>
             </div>
         </div>
@@ -435,6 +435,7 @@
 
         // ImgBB API endpoint
         const IMGBB_API = 'https://api.imgbb.com/1/upload';
+        const IMGBB_LIST_API = 'https://api.imgbb.com/1/images';
 
         function loadConfig() {
             config.imgbbKey = localStorage.getItem('imgbb_key') || DEFAULT_CONFIG.imgbbKey;
@@ -519,7 +520,7 @@
 
                 return {
                     url: data.data.display_url,
-                    thumbUrl: data.data.thumb.url,
+                    thumbUrl: data.data.thumb?.url || data.data.display_url,
                     deleteUrl: data.data.delete_url,
                     imgbbId: data.data.id,
                     title: file.name
@@ -737,37 +738,51 @@
             }
         });
 
-        // --- НОВАЯ ФУНКЦИЯ: загрузка изображений с публичного каталога serj-01.imgbb.com ---
-        async function refreshFromPublicAlbum() {
+        // --- НОВАЯ ФУНКЦИЯ: загрузка изображений через ImgBB API ---
+        async function refreshFromImgBB(page = 1, limit = 100) {
             if (isLoading) {
                 showStatus('⏳ Подождите, идет загрузка...', 'info');
                 return;
             }
 
-            const albumUrl = 'https://serj-01.imgbb.com/';
-            showStatus('⏳ Получение фото из публичного альбома...', 'loading');
+            if (!config.imgbbKey) {
+                showStatus('❌ Установите ImgBB API ключ в настройках', 'error');
+                return;
+            }
+
+            showStatus('⏳ Получение списка изображений из ImgBB...', 'loading');
             isLoading = true;
 
             try {
-                const res = await fetch(albumUrl, { method: 'GET', mode: 'cors' });
-                if (!res.ok) throw new Error(`Ошибка сети: ${res.status}`);
-                const text = await res.text();
+                const url = `${IMGBB_LIST_API}?key=${encodeURIComponent(config.imgbbKey)}&page=${page}&limit=${limit}`;
+                const res = await fetch(url);
+                if (!res.ok) {
+                    const body = await res.text().catch(() => '');
+                    throw new Error(`Сервер вернул ${res.status} ${res.statusText} ${body}`);
+                }
 
-                // Ищем прямые ссылки на изображения в получённом HTML
-                const rawMatches = text.match(/https?:\/\/[^\"'\s>]+?\.(?:jpg|jpeg|png|gif)/gi) || [];
-                const matches = Array.from(new Set(rawMatches));
+                const data = await res.json();
+                const items = data.data || [];
 
-                if (matches.length === 0) {
-                    throw new Error('Не найдено изображений на странице. Возможно, доступ ограничен (CORS) или структура страницы отличается.');
+                if (!Array.isArray(items) || items.length === 0) {
+                    showStatus('ℹ️ Изображения не найдены в аккаунте ImgBB (проверьте ключ и страницу).', 'info');
+                    return;
                 }
 
                 cloudPhotos = loadPhotosFromLocalStorage();
                 let added = 0;
 
-                matches.forEach(url => {
-                    // Пропускаем уже добавленные
-                    if (!cloudPhotos.some(p => p.url === url || p.thumbUrl === url)) {
-                        cloudPhotos.push({ url: url, thumbUrl: url, deleteUrl: '', imgbbId: '', title: url.split('/').pop() });
+                items.forEach(item => {
+                    // возможные поля: display_url, url, image.url, thumb.url
+                    const url = item.display_url || item.url || (item.image && item.image.display_url) || (item.image && item.image.url);
+                    const thumb = (item.thumb && item.thumb.url) || url;
+                    const id = item.id || item.image_id || '';
+                    const title = item.title || url.split('/').pop();
+
+                    if (!url) return;
+
+                    if (!cloudPhotos.some(p => p.url === url || p.thumbUrl === url || p.imgbbId === id)) {
+                        cloudPhotos.push({ url: url, thumbUrl: thumb, deleteUrl: item.delete_url || '', imgbbId: id, title: title });
                         added++;
                     }
                 });
@@ -775,14 +790,14 @@
                 if (added > 0) {
                     savePhotosToLocalStorage();
                     renderGallery();
-                    showStatus(`✓ Добавлено ${added} фото из публичного альбома`, 'success');
+                    showStatus(`✓ Добавлено ${added} новых фото из ImgBB`, 'success');
                 } else {
                     showStatus('ℹ️ Новых фото не найдено', 'info');
                 }
+
             } catch (e) {
-                console.error('Ошибка при получении публичного альбома:', e);
-                // Подсказка про CORS
-                showStatus('❌ Ошибка при получении фото: ' + e.message + '. Возможно, сервер блокирует запросы (CORS).', 'error');
+                console.error('Ошибка при получении изображений из ImgBB:', e);
+                showStatus('❌ Ошибка: ' + e.message, 'error');
             } finally {
                 isLoading = false;
             }
