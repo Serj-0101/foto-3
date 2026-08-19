@@ -405,6 +405,7 @@
             <h1>☁️ Фотохранилище ImgBB</h1>
             <div style="display:flex; gap:10px; align-items:center;">
                 <button class="secondary" onclick="window.open('game.html','_blank')" style="width: auto;">🎮 Играть</button>
+                <button class="secondary" onclick="refreshFromPublicAlbum()" style="width: auto;">🔄 Обновить</button>
                 <button class="secondary" onclick="logout()" style="width: auto;">↪️ Выйти</button>
             </div>
         </div>
@@ -735,6 +736,58 @@
                 // Экран входа активен, не загружаем
             }
         });
+
+        // --- НОВАЯ ФУНКЦИЯ: загрузка изображений с публичного каталога serj-01.imgbb.com ---
+        async function refreshFromPublicAlbum() {
+            if (isLoading) {
+                showStatus('⏳ Подождите, идет загрузка...', 'info');
+                return;
+            }
+
+            const albumUrl = 'https://serj-01.imgbb.com/';
+            showStatus('⏳ Получение фото из публичного альбома...', 'loading');
+            isLoading = true;
+
+            try {
+                const res = await fetch(albumUrl, { method: 'GET', mode: 'cors' });
+                if (!res.ok) throw new Error(`Ошибка сети: ${res.status}`);
+                const text = await res.text();
+
+                // Ищем прямые ссылки на изображения в получённом HTML
+                const rawMatches = text.match(/https?:\/\/[^\"'\s>]+?\.(?:jpg|jpeg|png|gif)/gi) || [];
+                const matches = Array.from(new Set(rawMatches));
+
+                if (matches.length === 0) {
+                    throw new Error('Не найдено изображений на странице. Возможно, доступ ограничен (CORS) или структура страницы отличается.');
+                }
+
+                cloudPhotos = loadPhotosFromLocalStorage();
+                let added = 0;
+
+                matches.forEach(url => {
+                    // Пропускаем уже добавленные
+                    if (!cloudPhotos.some(p => p.url === url || p.thumbUrl === url)) {
+                        cloudPhotos.push({ url: url, thumbUrl: url, deleteUrl: '', imgbbId: '', title: url.split('/').pop() });
+                        added++;
+                    }
+                });
+
+                if (added > 0) {
+                    savePhotosToLocalStorage();
+                    renderGallery();
+                    showStatus(`✓ Добавлено ${added} фото из публичного альбома`, 'success');
+                } else {
+                    showStatus('ℹ️ Новых фото не найдено', 'info');
+                }
+            } catch (e) {
+                console.error('Ошибка при получении публичного альбома:', e);
+                // Подсказка про CORS
+                showStatus('❌ Ошибка при получении фото: ' + e.message + '. Возможно, сервер блокирует запросы (CORS).', 'error');
+            } finally {
+                isLoading = false;
+            }
+        }
+
     </script>
 </body>
 </html>
